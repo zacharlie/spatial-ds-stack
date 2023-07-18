@@ -1,0 +1,5 @@
+FROM docker.io/supabase/postgres:15.1.0.73
+
+COPY ../utils/initdb-template.sh /docker-entrypoint-initdb.d/x-00-init.sh
+RUN chown postgres:postgres /docker-entrypoint-initdb.d/x-00-init.sh
+RUN chmod +x /docker-entrypoint-initdb.d/x-00-init.sh

@@ -1,0 +1,180 @@
+# postgresql connections
+ARG psycopg2_release=2.9.3
+ARG psycopg2_binary_release=2.9.3
+# sql queries/ connections
+ARG jupysql_release=0.7.2
+ARG sqlalchemy_release=1.4.46
+# in-memory sql
+ARG duckdb_release=0.7.1
+# mlops
+ARG mlflow_release=1.24.0,<2.0.0
+# ml
+ARG pycaret_release=2.3.10
+# ARG scikit_release=0.23,<=0.23.2
+
+# jupyter extensions
+
+# ds and data types
+ARG xarray_release=2023.6.0
+ARG dask_release=2023.6.1
+ARG netCDF4_release=1.6.4
+ARG bottleneck_release=1.3.7
+ARG pint_release=0.22.0
+ARG sparse_release=0.14.0
+# notebook widgets & ux
+ARG ipywidgets_release=7.3.2,<8.0.0
+# additional ai extensions
+
+# spatial data
+ARG geopandas_release=0.12.2
+# 3d
+ARG pythreejs_release=2.4.2
+# basemaps
+ARG contextily_release=1.3.0
+# maps
+ARG ipyleaflet_release=0.17.2
+ARG folium_release=0.11.0,<=0.13.0
+ARG leafmap_release=0.22.0
+ARG localtileserver_release=0.6.4
+ARG pydeck_release=0.8.0
+# xarray suggested
+ARG cartopy_release=0.21.1
+# comparative EDA
+ARG ydata_release=4.1.2
+# df user interfaces
+ARG pandasgui_release=0.2.9
+ARG dtale_release=2.15.2
+# more dataviz
+ARG jupyter_bokeh_release=3.0.7
+ARG vega_release=4.0.0
+# pygal 3.0.0
+
+# kernels
+# https://jupyter-docker-stacks.readthedocs.io/en/latest/using/recipes.html#add-a-custom-conda-environment-and-jupyter-kernel
+
+# create Python kernel and link it to jupyter
+# RUN "${CONDA_DIR}/envs/${conda_env}/bin/python" -m ipykernel install --user --name="${conda_env}" && \
+    # fix-permissions "${CONDA_DIR}" && \
+    # fix-permissions "/home/${NB_USER}"
+#  ipykernel 6.23.3
+# julia 1.9.1
+# r-essentials r-base
+# -c r r-irkernel
+
+# ai processing packages
+# https://github.com/elyra-ai/elyra
+# conda install -c conda-forge "elyra[all]"
+
+# packages only on pypi (get-latest)
+# ARG pandasai  # conversational ai with df context
+# ARG keplergl  # map visualization
+# ARG pgvector  # PGVector Bindings
+# ARG lamini  # lamini ai context trainable llm
+# ARG jupyter_ai  # generative ai magics from jupyterlabs  # https://github.com/jupyterlab/jupyter-ai
+# Language Server Protocol from jupyterlabs for autocomplete (intellisense)
+# ARG jupyterlab-lsp
+# https://github.com/jupyterlab/lumino
+# https://observablehq.com/@observablehq/plot-gallery
+# ARG pyobsplot
+
+
+FROM docker.io/jupyter/scipy-notebook:notebook-6.5.4 as base
+# Base Container Src:
+# https://github.com/jupyter/docker-stacks/blob/main/scipy-notebook/Dockerfile
+
+# wget https://julialang-s3.julialang.org/bin/linux/x64/1.7/julia-1.7.0-linux-x86_64.tar.gz
+# tar -xvzf julia-1.7.0-linux-x86_64.tar.gz
+# sudo cp -r julia-1.7.0 /opt/
+# sudo ln -s /opt/julia-1.7.0/bin/julia /usr/local/bin/julia
+# using Pkg
+# Pkg.add("IJulia")
+
+
+WORKDIR /app
+
+# python libraries for SQL operations
+ARG psycopg2_release
+ARG psycopg2_binary_release
+ARG sqlalchemy_release
+ARG jupysql_release
+ARG duckdb_release
+
+RUN mamba install -c conda-forge --quiet --yes \
+    "psycopg2>=${psycopg2_release}" \
+    "psycopg2-binary>=${psycopg2_binary_release}" \
+    "jupysql>=${jupysql_release}" \
+    "sqlalchemy>=${sqlalchemy_release}" \
+    "python-duckdb>=${duckdb_release}"
+
+FROM base as mlflow
+
+WORKDIR /app
+
+ARG mlflow_release
+
+RUN mamba install -c conda-forge --quiet --yes "mlflow>=${mlflow_release}"
+
+FROM mlflow as pycaret
+
+WORKDIR /app
+
+ARG pycaret_release
+# ARG scikit_release
+
+# RUN mamba install -c conda-forge --quiet --yes "scikit-learn>=${scikit_release}" "pycaret[full]>=${pycaret_release}"
+RUN mamba install -c conda-forge --quiet --yes pycaret
+
+FROM pycaret as geo
+
+WORKDIR /app
+
+ARG geopandas_release
+ARG contextily_release
+ARG pythreejs_release
+ARG ipywidgets_release
+ARG ipyleaflet_release
+ARG folium_release
+ARG leafmap_release
+ARG localtileserver_release
+ARG pydeck_release
+
+RUN mamba install -c conda-forge --quiet --yes \
+    "geopandas>=${geopandas_release}" \
+    "contextily>=${contextily_release}" \
+    "pythreejs>=${pythreejs_release}" \
+    "ipywidgets>=${ipywidgets_release}" \
+    "ipyleaflet>=${ipyleaflet_release}" \
+    "folium>=${folium_release}" \
+    "leafmap>=${leafmap_release}" \
+    "localtileserver>=${localtileserver_release}" \
+    "pydeck>=${pydeck_release}"
+
+FROM geo as extra
+
+WORKDIR /app
+
+ARG ydata_release
+ARG pandasgui_release
+ARG dtale_release
+
+RUN mamba install -c conda-forge --quiet --yes \
+    "ydata-profiling>=${ydata_release}" \
+    # "pandasgui>=${pandasgui_release}" \
+    # "pandasgui" \
+    "dtale>=${dtale_release}"
+
+# Install packages only published on pypi
+
+RUN pip install pandasai keplergl pgvector
+
+FROM extra as clean
+
+WORKDIR /app
+
+RUN mamba clean --all
+
+FROM clean as run
+
+USER $NB_UID
+
+WORKDIR $HOME

@@ -1,0 +1,9 @@
+[db]
+USERNAME = nbuser
+PASSWORD = Fhbw1b7y1dlwvT0BRamW
+DBNAME = dbdata
+HOST = db
+PORT = 5432
+
+[openai]
+OPENAI_API_KEY = NULL

@@ -1,0 +1,39 @@
+ARG psycopg2_release=2.9.3
+ARG psycopg2_binary_release=2.9.3
+ARG mlflow_release=1.24.0,<2.0.0
+
+FROM docker.io/python:3.9.16 as base
+
+WORKDIR /app
+
+ARG psycopg2_release
+ARG psycopg2_binary_release
+ARG mlflow_release
+
+RUN pip install "mlflow>=${mlflow_release}" \
+                "psycopg2>=${psycopg2_release}" \
+                "psycopg2-binary>=${psycopg2_binary_release}"
+
+FROM base as build
+
+WORKDIR /app
+
+# include wait-for-it.sh for delaying entrypoint
+# until a local stack database is available
+COPY ../utils/wait-for-it.sh /
+RUN chmod +x /wait-for-it.sh
+# create artifact directory
+RUN mkdir /mlflow/
+
+FROM build as run
+
+WORKDIR /
+
+RUN groupadd --gid 10001 mlflow && \
+    useradd --uid 10001 --gid mlflow --shell /bin/bash --create-home mlflow
+
+# mlflow user
+USER 10001
+
+# by default, run server with a local sqlite database instance
+CMD mlflow server --backend-store-uri sqlite:///mlruns.db --default-artifact-root /mlflow

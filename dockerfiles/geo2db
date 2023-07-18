@@ -1,0 +1,8 @@
+FROM ghcr.io/osgeo/gdal:alpine-small-3.6.4
+
+RUN apk add --no-cache inotify-tools
+COPY ../utils/geo2db-exec.sh /geo2db-exec.sh
+COPY ../utils/geo2db-watch.sh /geo2db-watch.sh
+RUN chmod +x /geo2db-exec.sh
+RUN chmod +x /geo2db-watch.sh
+CMD /geo2db-exec.sh && /geo2db-watch.sh
